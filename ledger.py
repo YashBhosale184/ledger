@@ -1,3 +1,7 @@
+import streamlit as st
+from datetime import date
+
+# HospitalLedger class here
 class HospitalLedger:
     def __init__(self):
         self.patients = {}
@@ -7,50 +11,55 @@ class HospitalLedger:
         patient_id = self.next_patient_id
         self.patients[patient_id] = {"name": name, "disease": disease, "history": []}
         self.next_patient_id += 1
-        print(f"Patient '{name}' added with ID: {patient_id}")
         return patient_id
 
-    def record_visit(self, patient_id, date, notes):
+    def record_visit(self, patient_id, visit_date, notes):
         if patient_id in self.patients:
-            self.patients[patient_id]["history"].append({"date": date, "notes": notes})
-            print(f"Visit recorded for Patient ID {patient_id} on {date}")
-        else:
-            print(f"Patient ID {patient_id} not found.")
+            self.patients[patient_id]["history"].append({"date": visit_date, "notes": notes})
+            return True
+        return False
 
     def get_patient_details(self, patient_id):
-        if patient_id in self.patients:
-            patient = self.patients[patient_id]
-            print(f"\n--- Patient Details for ID: {patient_id} ---")
-            print(f"Name: {patient['name']}")
-            print(f"Disease: {patient['disease']}")
-            if patient['history']:
-                print("\n--- Visit History ---")
-                for visit in patient['history']:
-                    print(f"Date: {visit['date']}, Notes: {visit['notes']}")
-            else:
-                print("No visit history available.")
-        else:
-            print(f"Patient ID {patient_id} not found.")
+        return self.patients.get(patient_id, None)
 
     def list_all_patients(self):
-        if self.patients:
-            print("\n--- All Patients ---")
-            for patient_id, details in self.patients.items():
-                print(f"ID: {patient_id}, Name: {details['name']}, Disease: {details['disease']}")
+        return self.patients
+
+# Initialize ledger
+if 'ledger' not in st.session_state:
+    st.session_state.ledger = HospitalLedger()
+
+ledger = st.session_state.ledger
+
+# Streamlit UI
+st.title("🏥 Hospital Ledger System")
+
+menu = st.sidebar.radio("Select Action", ["Add Patient", "Record Visit", "View Patient", "List All Patients"])
+
+if menu == "Add Patient":
+    st.header("Add New Patient")
+    name = st.text_input("Patient Name")
+    disease = st.text_input("Disease/Condition")
+    if st.button("Add Patient"):
+        if name and disease:
+            pid = ledger.add_patient(name, disease)
+            st.success(f"Patient '{name}' added with ID: {pid}")
         else:
-            print("No patients in the ledger.")
+            st.error("Please fill in all fields.")
 
-# Example Usage
-ledger = HospitalLedger()
+elif menu == "Record Visit":
+    st.header("Record a Visit")
+    pid = st.number_input("Patient ID", min_value=1, step=1)
+    visit_date = st.date_input("Visit Date", value=date.today())
+    notes = st.text_area("Visit Notes")
+    if st.button("Record Visit"):
+        success = ledger.record_visit(pid, str(visit_date), notes)
+        if success:
+            st.success(f"Visit recorded for Patient ID {pid} on {visit_date}")
+        else:
+            st.error("Patient ID not found.")
 
-patient1_id = ledger.add_patient("Alice Smith", "Flu")
-patient2_id = ledger.add_patient("Bob Johnson", "Fractured Arm")
-
-ledger.record_visit(patient1_id, "2025-05-04", "Initial check-up, prescribed rest and fluids.")
-ledger.record_visit(patient1_id, "2025-05-06", "Follow-up, temperature reduced.")
-ledger.record_visit(patient2_id, "2025-05-04", "Applied cast, scheduled for X-ray.")
-
-ledger.get_patient_details(patient1_id)
-ledger.get_patient_details(patient2_id)
-
-ledger.list_all_patients() 
+elif menu == "View Patient":
+    st.header("View Patient Details")
+    pid = st.number_input("Enter Patient ID", min_value=1, step=1)
+    if st.button("Get Details"):
